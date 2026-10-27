@@ -256,6 +256,9 @@ static int panel_st77916_bringup(void)
         .qspi_cfg = &qspi,
     };
 
+    aic_spi_lcd_backlight_gpio_enable(ST77916_BL_PIN, false, true);
+    printf("ST77916: backlight %s high\n", ST77916_BL_PIN);
+
     if (!spi_dev) {
         panel_st77916_reset();
 
