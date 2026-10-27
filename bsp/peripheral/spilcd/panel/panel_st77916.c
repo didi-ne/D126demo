@@ -248,6 +248,8 @@ static void panel_st77916_reset(void)
 static int panel_st77916_bringup(void)
 {
     static aic_spi_lcd_dev_t *spi_dev;
+    static u8 *buffer;
+    unsigned int fb_size = 360 * 360 * 2;
     aic_spi_lcd_cfg_t config = {
         .bus_name = "qspi1",
         .dev_name = "qspi1dev",
@@ -269,9 +271,26 @@ static int panel_st77916_bringup(void)
         }
 
         panel_st77916_enable(spi_dev);
+
+        buffer = aicos_malloc_align(MEM_CMA, fb_size, CACHE_LINE_SIZE);
+        if (!buffer) {
+            printf("ST77916: framebuffer alloc failed\n");
+            return -1;
+        }
     }
 
-    printf("ST77916: panel init done\n");
+    for (unsigned int i = 0; i < fb_size; i += 2) {
+        buffer[i] = 0x07;
+        buffer[i + 1] = 0xE0;
+    }
+    aicos_dcache_clean_invalid_range((ulong *)buffer,
+                                     (ulong)ALIGN_UP(fb_size, CACHE_LINE_SIZE));
+
+    aic_spi_lcd_config_win(spi_dev, 0, 359, 0, 359);
+    aic_spi_lcd_flush(spi_dev, buffer, fb_size);
+    aic_spi_lcd_wait_completion(spi_dev);
+
+    printf("ST77916: 360x360 green, backlight %s\n", ST77916_BL_PIN);
     return 0;
 }
 
