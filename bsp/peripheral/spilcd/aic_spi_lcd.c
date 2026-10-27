@@ -451,14 +451,22 @@ void aic_spi_lcd_backlight_pwm_enable(int channel, int level, bool enable)
 #ifdef RT_USING_PWM
     struct rt_device_pwm *pwm_dev;
 
+#ifdef AIC_XPWM_DRV
+    pwm_dev = (struct rt_device_pwm *)rt_device_find("xpwm");
+#else
     pwm_dev = (struct rt_device_pwm *)rt_device_find("pwm");
+#endif
     if (!pwm_dev) {
         pr_err("pwm device not found.\n");
         return;
     }
 
     if (enable) {
+#ifdef AIC_XPWM_DRV
+        rt_pwm_set(pwm_dev, channel, 1000000, 10000 * level, 0);
+#else
         rt_pwm_set(pwm_dev, channel, 1000000, 10000 * level);
+#endif
         rt_pwm_enable(pwm_dev, channel);
     } else {
         rt_pwm_disable(pwm_dev, channel);

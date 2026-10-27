@@ -193,7 +193,7 @@ choice
 
     config AIC_PWM_BACKLIGHT
     bool "pwm"
-    depends on AIC_PWM_DRV
+    depends on AIC_PWM_DRV || AIC_XPWM_DRV
 
     config AIC_GPIO_BACKLIGHT
     bool "gpio"
