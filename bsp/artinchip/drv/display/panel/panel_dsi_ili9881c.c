@@ -774,6 +774,17 @@ static void bv050hdm_power_on(void)
     hal_gpio_direction_output(g, p);
     hal_gpio_set_output(g, p);
     printf("MIPI: PS.0 high, VCC_LCD on\n");
+
+    pin = hal_gpio_name2pin("PF.0");
+    if (pin >= 0) {
+        g = GPIO_GROUP(pin);
+        p = GPIO_GROUP_PIN(pin);
+        hal_gpio_set_func(g, p, 1);
+        hal_gpio_set_bias_pull(g, p, PIN_PULL_DIS);
+        hal_gpio_set_drive_strength(g, p, 3);
+        hal_gpio_direction_output(g, p);
+        hal_gpio_clr_output(g, p);
+    }
     aic_delay_ms(20);
 }
 
@@ -993,6 +1004,8 @@ static int bv050hdm_enable(struct aic_panel *panel)
 
     panel_dsi_setup_realmode(panel);
     panel_de_timing_enable(panel, 0);
+    aic_delay_ms(100);
+    panel_backlight_enable(panel, 0);
     return 0;
 }
 

@@ -219,10 +219,15 @@ void panel_backlight_enable(struct aic_panel *panel, u32 ms)
     long pin;
 
     pin = hal_gpio_name2pin(AIC_PANEL_ENABLE_GPIO);
+    if (pin < 0)
+        return;
 
     g = GPIO_GROUP(pin);
     p = GPIO_GROUP_PIN(pin);
 
+    hal_gpio_set_func(g, p, 1);
+    hal_gpio_set_bias_pull(g, p, PIN_PULL_DIS);
+    hal_gpio_set_drive_strength(g, p, 3);
     hal_gpio_direction_output(g, p);
 
 #ifndef AIC_PANEL_ENABLE_GPIO_LOW
@@ -235,14 +240,29 @@ void panel_backlight_enable(struct aic_panel *panel, u32 ms)
 #if defined(KERNEL_RTTHREAD) && defined(AIC_PWM_BACKLIGHT_CHANNEL)
     struct rt_device_pwm *pwm_dev;
 
+#ifdef AIC_XPWM_DRV
+    pwm_dev = (struct rt_device_pwm *)rt_device_find("xpwm");
+#else
     pwm_dev = (struct rt_device_pwm *)rt_device_find("pwm");
-
-#ifndef AIC_PWM_BACKLIGHT_BYPASS
-    /* pwm frequency: 1KHz = 1000000ns */
-    rt_pwm_set(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL,
-            1000000, 10000 * AIC_PWM_BRIGHTNESS_LEVEL);
 #endif
-    rt_pwm_enable(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL);
+    if (pwm_dev) {
+#ifdef AIC_XPWM_DRV
+        /* XPWM applies period/duty only after the channel is enabled. */
+        rt_pwm_enable(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL);
+#ifndef AIC_PWM_BACKLIGHT_BYPASS
+        /* 1 kHz. A non-zero pulse count keeps the XPWM output running. */
+        rt_pwm_set(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL,
+                1000000, 10000 * AIC_PWM_BRIGHTNESS_LEVEL, 0xFFFFFFFF);
+#endif
+#else
+#ifndef AIC_PWM_BACKLIGHT_BYPASS
+        /* pwm frequency: 1KHz = 1000000ns */
+        rt_pwm_set(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL,
+                1000000, 10000 * AIC_PWM_BRIGHTNESS_LEVEL);
+#endif
+        rt_pwm_enable(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL);
+#endif
+    }
 #endif
 }
 
@@ -271,8 +291,13 @@ void panel_backlight_disable(struct aic_panel *panel, u32 ms)
 #if defined(KERNEL_RTTHREAD) && defined(AIC_PWM_BACKLIGHT_CHANNEL)
     struct rt_device_pwm *pwm_dev;
 
+#ifdef AIC_XPWM_DRV
+    pwm_dev = (struct rt_device_pwm *)rt_device_find("xpwm");
+#else
     pwm_dev = (struct rt_device_pwm *)rt_device_find("pwm");
-    rt_pwm_disable(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL);
+#endif
+    if (pwm_dev)
+        rt_pwm_disable(pwm_dev, AIC_PWM_BACKLIGHT_CHANNEL);
 #endif
 }
 
