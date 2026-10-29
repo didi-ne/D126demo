@@ -12,6 +12,10 @@
 #include <aic_utils.h>
 
 struct aic_pinmux aic_pinmux_config[] = {
+#if defined(AIC_LVGL_FIVE_DISP_DEMO) || defined(AIC_QSPI_LCD_ST77916)
+    {1, PIN_PULL_DIS, 3, "PE.0"},   /* SPI panel backlight */
+    {1, PIN_PULL_DIS, 3, "PD.10"},  /* SPI panel reset */
+#endif
 #ifdef AIC_LVGL_FIVE_DISP_DEMO
     {1, PIN_PULL_DIS, 3, "PD.7"},
     {1, PIN_PULL_DIS, 3, "PD.10"},
@@ -54,7 +58,15 @@ struct aic_pinmux aic_pinmux_config[] = {
     {4, PIN_PULL_DIS, 3, "PD.3"},  // SDA
 #endif
 #ifdef AIC_USING_QSPI1
-#ifdef AIC_LVGL_FIVE_DISP_DEMO
+#ifdef AIC_QSPI_LCD_ST77916
+    /* J6 QSPI LCD. SPI1 on PC0-PC5 is function 7. */
+    {7, PIN_PULL_UP, 3, "PC.0"},
+    {7, PIN_PULL_UP, 3, "PC.1"},
+    {7, PIN_PULL_UP, 3, "PC.2"},
+    {7, PIN_PULL_UP, 3, "PC.3"},
+    {7, PIN_PULL_UP, 3, "PC.4"},
+    {7, PIN_PULL_UP, 3, "PC.5"},
+#elif defined(AIC_LVGL_FIVE_DISP_DEMO)
     {7, PIN_PULL_UP, 3, "PC.0"},
     {7, PIN_PULL_UP, 3, "PC.1"},
     {7, PIN_PULL_UP, 3, "PC.2"},
@@ -199,6 +211,7 @@ struct aic_pinmux aic_pinmux_config[] = {
     {2, PIN_PULL_DIS, 3, "PD.27"},
 #endif
 #ifdef AIC_DISP_MIPI_DSI
+    {1, PIN_PULL_DIS, 3, "PS.0"},   /* RTC_IO0_SLEEP, turns VCC_LCD on */
     {4, PIN_PULL_DIS, 3, "PD.18"},
     {4, PIN_PULL_DIS, 3, "PD.19"},
     {4, PIN_PULL_DIS, 3, "PD.20"},

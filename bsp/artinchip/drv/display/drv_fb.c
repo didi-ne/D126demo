@@ -637,7 +637,7 @@ int aicfb_probe(void)
     if (!fbi->fb_start)
     {
         ret = -ENOMEM;
-        pr_err("alloc frame buffer failed\n");
+        pr_err("alloc frame buffer failed, size %u\n", (u32)fb_size);
         goto err;
     }
     pr_info("fb0 allocated at 0x%x\n", (u32)(uintptr_t)fbi->fb_start);

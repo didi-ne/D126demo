@@ -428,7 +428,7 @@ void fb_color_block(struct aicfb_info *fbi, size_t fb_size)
             pos = (unsigned char *)fbi->fb_start + i * fbi->stride;
 
             for (j = 0; j < width; j++) {
-                index = (i / 100 + j / 100) % 5;
+                index = 0;
 
                 *(pos++) = color[index][0];
                 *(pos++) = color[index][1];
@@ -446,7 +446,7 @@ void fb_color_block(struct aicfb_info *fbi, size_t fb_size)
             pos = (unsigned char *)fbi->fb_start + i * fbi->stride;
 
             for (j = 0; j < width; j++) {
-                index = (i / 100 + j / 100) % 5;
+                index = 0;
 
                 *(pos++) = color[index][0];
                 *(pos++) = color[index][1];
@@ -463,7 +463,7 @@ void fb_color_block(struct aicfb_info *fbi, size_t fb_size)
             pos = (unsigned char *)fbi->fb_start + i * fbi->stride;
 
             for (j = 0; j < width; j++) {
-                index = (i / 100 + j / 100) % 5;
+                index = 0;
 
                 *(pos++) = (color[index][0] >> 3) | ((color[index][1] & 0x1c) << 3);
                 *(pos++) = ((color[index][1] & 0xe0) >> 5) | (color[index][2] & 0xf8);
@@ -482,6 +482,7 @@ void fb_color_block(struct aicfb_info *fbi, size_t fb_size)
         return;
     }
 
+    pr_info("fb solid red %ux%u\n", width, height);
     aicos_dcache_clean_range((unsigned long *)fbi->fb_start, fbi->fb_size);
 #endif /* AIC_FB_ROTATE_EN */
 #endif /* AIC_DISP_COLOR_BLOCK */

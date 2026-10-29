@@ -6,6 +6,7 @@
  * Authors: weilin.peng@artinchip.com
  */
 #include <aic_core.h>
+#include <aic_hal.h>
 #include <ram_param.h>
 #include "board.h"
 
@@ -144,6 +145,50 @@ void rt_hw_board_init(void)
     rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
 #endif
 }
+
+/*
+ * PF.0 is LCD_PWM, ball E12, into RY3730 EN through R20. R21 holds EN low.
+ * The DSPK pin bank that contains PF.0 is powered by LDO25. The pad stays
+ * low, and the backlight stays off, until that LDO is enabled.
+ */
+static void d126_gpio_output(const char *name, int high)
+{
+    long pin;
+    unsigned int g, p;
+
+    pin = hal_gpio_name2pin(name);
+    if (pin < 0)
+        return;
+
+    g = GPIO_GROUP(pin);
+    p = GPIO_GROUP_PIN(pin);
+    hal_gpio_set_func(g, p, 1);
+    hal_gpio_set_bias_pull(g, p, PIN_PULL_DIS);
+    hal_gpio_set_drive_strength(g, p, 3);
+    hal_gpio_direction_output(g, p);
+    if (high)
+        hal_gpio_set_output(g, p);
+    else
+        hal_gpio_clr_output(g, p);
+}
+
+static int d126_backlight_init(void)
+{
+    u32 val;
+
+    hal_clk_enable_deassertrst(CLK_SYSCFG);
+    /* LDO25_CFG: bit4 enable, value 1 is 2.5V */
+    val = readl(SYSCFG_BASE + 0x020);
+    val &= ~0x7u;
+    val |= (1u << 4) | 1u;
+    writel(val, SYSCFG_BASE + 0x020);
+
+    d126_gpio_output("PS.0", 1);
+    d126_gpio_output("PF.0", 1);
+    printf("MIPI: LDO25 on, PF.0 high, backlight on\n");
+    return 0;
+}
+INIT_DEVICE_EXPORT(d126_backlight_init);
 
 #elif defined(KERNEL_FREERTOS)
 #elif defined(KERNEL_BAREMETAL)

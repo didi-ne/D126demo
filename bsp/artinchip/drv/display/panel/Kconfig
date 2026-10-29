@@ -297,6 +297,13 @@ config ILI9881C_MATCH_ID
     default 2 if ILI9881C_04_DEFAULT
     default 3 if BV050HDM_DEFAULT
 
+config AIC_PANEL_LCD_PWR_GPIO
+    string "LCD analog power GPIO"
+    depends on BV050HDM_DEFAULT
+    help
+      GPIO that turns VCC_LCD on before the 720x1280 init sequence.
+      The 124-pin board d126-demo124-nor uses PS.0.
+
 choice
     prompt "JD9365 Match Table"
     depends on AIC_PANEL_DSI_JD9365

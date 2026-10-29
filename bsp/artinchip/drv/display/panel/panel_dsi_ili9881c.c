@@ -753,38 +753,68 @@ static struct panel_dsi ili9881c_04_dsi = {
     .lane_num = 4,
 };
 
-/*
- * VCC_LCD is switched by AO3401. RTC_IO0_SLEEP (PS.0) high turns Q5 on
- * and the P-MOSFET on. MIPI_RST is only an RC to VCC_LCD, not a GPIO.
- */
-static void bv050hdm_power_on(void)
+static void bv050hdm_gpio_output(const char *name, int high)
 {
     unsigned int g, p;
     long pin;
 
-    pin = hal_gpio_name2pin("PS.0");
+    if (!name || !name[0])
+        return;
+
+    pin = hal_gpio_name2pin(name);
     if (pin < 0)
         return;
 
     g = GPIO_GROUP(pin);
     p = GPIO_GROUP_PIN(pin);
     hal_gpio_set_func(g, p, 1);
-    hal_gpio_set_bias_pull(g, p, 0);
+    hal_gpio_set_bias_pull(g, p, PIN_PULL_DIS);
     hal_gpio_set_drive_strength(g, p, 3);
     hal_gpio_direction_output(g, p);
-    hal_gpio_set_output(g, p);
-    printf("MIPI: PS.0 high, VCC_LCD on\n");
-
-    pin = hal_gpio_name2pin("PF.0");
-    if (pin >= 0) {
-        g = GPIO_GROUP(pin);
-        p = GPIO_GROUP_PIN(pin);
-        hal_gpio_set_func(g, p, 1);
-        hal_gpio_set_bias_pull(g, p, PIN_PULL_DIS);
-        hal_gpio_set_drive_strength(g, p, 3);
-        hal_gpio_direction_output(g, p);
+    if (high)
+        hal_gpio_set_output(g, p);
+    else
         hal_gpio_clr_output(g, p);
-    }
+}
+
+/*
+ * PH050TN7703A is 720x1280 MIPI 4-lane. The public-board FPC and the
+ * panel FPC use different pin numbers; connect them by signal name.
+ * D0 is PD.18/PD.19, D1 is PD.20/PD.21, CLK is PD.22/PD.23,
+ * D2 is PD.24/PD.25, D3 is PD.26/PD.27.
+ * Panel RESET is the board net MIPI_RST: R25 from VCC_LCD and C63 to
+ * GND, not a GPIO. STBYB is pulled up by R96 and is not on this panel.
+ * The 124-pin public board d126-demo124-nor drives PS.0 to turn
+ * VCC_LCD on, and PF.0 is the backlight enable.
+ */
+static void bv050hdm_ldo25_on(void)
+{
+#ifdef AIC_CHIP_D12P
+    u32 val;
+
+    /* PF.0 is in the DSPK bank. That bank runs from LDO25, so the
+     * backlight pin cannot go high until the LDO is enabled.
+     * Value 1 is 2.5V. RY3730 EN is active high.
+     */
+    hal_clk_enable_deassertrst(CLK_SYSCFG);
+    val = readl(SYSCFG_BASE + 0x020);
+    val &= ~0x7u;
+    val |= (1u << 4) | 1u;
+    writel(val, SYSCFG_BASE + 0x020);
+#endif
+}
+
+static void bv050hdm_power_on(void)
+{
+    bv050hdm_ldo25_on();
+#ifdef AIC_PANEL_LCD_PWR_GPIO
+    bv050hdm_gpio_output(AIC_PANEL_LCD_PWR_GPIO, 1);
+    if (AIC_PANEL_LCD_PWR_GPIO[0])
+        printf("MIPI: %s high, VCC_LCD on\n", AIC_PANEL_LCD_PWR_GPIO);
+#endif
+    /* RY3730 EN is PF.0, active high. */
+    bv050hdm_gpio_output("PF.0", 1);
+    printf("MIPI: LDO25 on, PF.0 high, backlight on\n");
     aic_delay_ms(20);
 }
 
@@ -1005,7 +1035,9 @@ static int bv050hdm_enable(struct aic_panel *panel)
     panel_dsi_setup_realmode(panel);
     panel_de_timing_enable(panel, 0);
     aic_delay_ms(100);
+    bv050hdm_gpio_output("PF.0", 1);
     panel_backlight_enable(panel, 0);
+    printf("MIPI: PF.0 high, backlight on\n");
     return 0;
 }
 
