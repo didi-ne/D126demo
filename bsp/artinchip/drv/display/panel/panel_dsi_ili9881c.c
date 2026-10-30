@@ -985,6 +985,7 @@ static int bv050hdm_enable(struct aic_panel *panel)
     panel_dsi_dcs_send_seq(panel, 0xD3, 0x39);
     /* Page 0 */
     panel_dsi_dcs_send_seq(panel, 0xFF, 0x98, 0x81, 0x00);
+    printf("MIPI: video on, RGB\n");
     panel_dsi_dcs_send_seq(panel, 0x51, 0x0F, 0xFF);
     panel_dsi_dcs_send_seq(panel, 0x53, 0x2C);
     panel_dsi_dcs_send_seq(panel, 0x55, 0x01);
