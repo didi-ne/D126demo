@@ -80,6 +80,9 @@
  * example 0x0123
  *         D0          D1          D2          D3
  *         PD26/PD27   PD24/PD25   PD20/PD21   PD18/PD19
+ *
+ * 0x2310 swaps D2 and D3 for d126-demo124-nand. The schematic net names
+ * stay D2-to-D2; this panel shows UI only when those two pairs are exchanged.
  */
 #define LANE_ASSIGNMENTS 0x2310
 
