@@ -23,5 +23,6 @@ int aic_wlan_pm_register(struct rt_device *device, struct aic_wlan_chip_pm_ops *
 void aic_wlan_pm_unregister(struct rt_device *device);
 void aic_wlan_pm_sdio_free_card(struct rt_mmcsd_host *host);
 struct rt_mmcsd_host *aic_sdmc_get_rthost(int id);
+void aic_sdmc_bus_reset(int id);
 
 #endif /* __GENERAL_WIRELESS_PM_H__ */

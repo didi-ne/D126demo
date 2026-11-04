@@ -229,6 +229,7 @@ void mmcsd_set_bus_width(struct rt_mmcsd_host *host, rt_uint32_t width);
 void mmcsd_set_data_timeout(struct rt_mmcsd_data *data, const struct rt_mmcsd_card *card);
 rt_uint32_t mmcsd_select_voltage(struct rt_mmcsd_host *host, rt_uint32_t ocr);
 void mmcsd_change(struct rt_mmcsd_host *host);
+rt_err_t mmcsd_scan_wait(struct rt_mmcsd_host *host, rt_int32_t timeout);
 void mmcsd_detect(void *param);
 struct rt_mmcsd_host *mmcsd_alloc_host(void);
 void mmcsd_free_host(struct rt_mmcsd_host *host);

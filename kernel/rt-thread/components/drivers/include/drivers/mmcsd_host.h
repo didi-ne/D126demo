@@ -105,6 +105,7 @@ struct rt_mmcsd_host {
     rt_uint32_t   spi_use_crc;
     struct rt_mutex  bus_lock;
     struct rt_semaphore  sem_ack;
+    struct rt_semaphore  detect_ack;
 
     rt_uint32_t       sdio_irq_num;
 

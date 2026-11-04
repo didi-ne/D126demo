@@ -59,13 +59,7 @@ struct aic_pinmux aic_pinmux_config[] = {
 #endif
 #ifdef AIC_USING_QSPI1
 #ifdef AIC_QSPI_LCD_ST77916
-    /* J6 QSPI LCD. SPI1 on PC0-PC5 is function 7. */
-    {7, PIN_PULL_UP, 3, "PC.0"},
-    {7, PIN_PULL_UP, 3, "PC.1"},
-    {7, PIN_PULL_UP, 3, "PC.2"},
-    {7, PIN_PULL_UP, 3, "PC.3"},
-    {7, PIN_PULL_UP, 3, "PC.4"},
-    {7, PIN_PULL_UP, 3, "PC.5"},
+    /* D126 datasheet: PC.0-PC.5 have no SDIO function. Leave them alone. */
 #elif defined(AIC_LVGL_FIVE_DISP_DEMO)
     {7, PIN_PULL_UP, 3, "PC.0"},
     {7, PIN_PULL_UP, 3, "PC.1"},
@@ -109,6 +103,10 @@ struct aic_pinmux aic_pinmux_config[] = {
     {2, PIN_PULL_UP, 7, "PB.11"},
 #endif
 #ifdef AIC_USING_SDMC1
+    /*
+     * On-chip AIC8800 is on SDMC1 inside the package. D126 pinmux gives
+     * SDC0 to PB.6-PB.11 only. PC.0-PC.5 are not SDIO pins.
+     */
     /* {2, PIN_PULL_UP, 7, "PC.0"}, */
     /* {2, PIN_PULL_UP, 7, "PC.1"}, */
     /* {2, PIN_PULL_UP, 7, "PC.2"}, */

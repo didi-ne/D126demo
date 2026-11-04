@@ -44,6 +44,7 @@ int aic8800_power_off(void)
 static rt_int32_t wifi_if_sdio_probe(struct rt_mmcsd_card *card)
 {
     int idx;
+    rt_kprintf("wifi sdio probe, card_type=%d\n", card->card_type);
     AIC_LOG_PRINTF("%s: card_type=%d, host_flags=0x%x\n", __func__, card->card_type, card->host->flags);
     g_wifi_if_sdio = card;
     g_wifi_host = card->host;
@@ -101,11 +102,14 @@ int wifi_if_sdio_init(void)
     }
     #endif
     else {
+        rt_kprintf("wifi sdio invalid chip_id=%d\n", chip_id);
         AIC_LOG_PRINTF("invalid chip_id = %d\n", chip_id);
         return -1;
     }
     AIC_LOG_PRINTF("sdio id = 0x%x\n", wifi_if_sdio_drv.id->product);
+    rt_kprintf("wifi sdio register, product=0x%x\n", wifi_if_sdio_drv.id->product);
     int ret = sdio_register_driver(&wifi_if_sdio_drv);
+    rt_kprintf("wifi sdio register ret=%d\n", ret);
     if (ret < 0) {
         AIC_LOG_PRINTF("rt sdio register driver failed:%d\n", ret);
         return ret;

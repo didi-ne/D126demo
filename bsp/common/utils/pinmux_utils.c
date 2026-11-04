@@ -181,6 +181,11 @@ __WEAK void aic_board_pinmux_init(void)
         hal_gpio_set_func(g, p, aic_pinmux_config[i].func);
         hal_gpio_set_bias_pull(g, p, aic_pinmux_config[i].bias);
         hal_gpio_set_drive_strength(g, p, aic_pinmux_config[i].drive);
+        /* WIFI_PWR_ON and other power pins must be driven before SDIO scan. */
+        if (aic_pinmux_config[i].flag & FLAG_POWER_PIN) {
+            hal_gpio_direction_output(g, p);
+            hal_gpio_set_output(g, p);
+        }
     }
 }
 

@@ -700,18 +700,14 @@ void mmcsd_change(struct rt_mmcsd_host *host)
     rt_mb_send(&mmcsd_detect_mb, (rt_ubase_t)host);
 }
 
-void mmcsd_detect(void *param)
+static void mmcsd_scan_host(struct rt_mmcsd_host *host)
 {
-    struct rt_mmcsd_host *host;
-    rt_uint32_t  ocr;
-    rt_int32_t  err;
+    rt_uint32_t ocr;
+    rt_int32_t err;
 
-    while (1)
+    rt_kprintf("sdio detect run card=%p\n", host->card);
+    if (host->card == RT_NULL)
     {
-        if (rt_mb_recv(&mmcsd_detect_mb, (rt_ubase_t *)&host, RT_WAITING_FOREVER) == RT_EOK)
-        {
-            if (host->card == RT_NULL)
-            {
                 mmcsd_host_lock(host);
                 mmcsd_power_up(host);
                 mmcsd_go_idle(host);
@@ -719,12 +715,14 @@ void mmcsd_detect(void *param)
                 mmcsd_send_if_cond(host, host->valid_ocr);
 
                 err = sdio_io_send_op_cond(host, 0, &ocr);
+                rt_kprintf("sdio detect op_cond err=%d ocr=0x%x\n", err, ocr);
                 if (!err)
                 {
                     if (init_sdio(host, ocr))
                         mmcsd_power_off(host);
                     mmcsd_host_unlock(host);
-                    continue;
+                    rt_sem_release(&host->detect_ack);
+                    return;
                 }
 
                 /*
@@ -742,7 +740,8 @@ void mmcsd_detect(void *param)
 #else
                     rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
 #endif
-                    continue;
+                    rt_sem_release(&host->detect_ack);
+                    return;
                 }
 
                 /*
@@ -760,9 +759,12 @@ void mmcsd_detect(void *param)
 #else
                     rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
 #endif
-                    continue;
+                    rt_sem_release(&host->detect_ack);
+                    return;
                 }
                 mmcsd_host_unlock(host);
+                rt_kprintf("sdio detect no card\n");
+                rt_sem_release(&host->detect_ack);
             }
             else
             {
@@ -788,8 +790,26 @@ void mmcsd_detect(void *param)
 #else
                 rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
 #endif
+                rt_sem_release(&host->detect_ack);
             }
-        }
+}
+
+rt_err_t mmcsd_scan_wait(struct rt_mmcsd_host *host, rt_int32_t timeout)
+{
+    RT_UNUSED(timeout);
+    /* Run here. The detect thread is lower priority than LVGL and will not be scheduled while the shell waits. */
+    mmcsd_scan_host(host);
+    return RT_EOK;
+}
+
+void mmcsd_detect(void *param)
+{
+    struct rt_mmcsd_host *host;
+
+    while (1)
+    {
+        if (rt_mb_recv(&mmcsd_detect_mb, (rt_ubase_t *)&host, RT_WAITING_FOREVER) == RT_EOK)
+            mmcsd_scan_host(host);
     }
 }
 
@@ -816,6 +836,7 @@ struct rt_mmcsd_host *mmcsd_alloc_host(void)
 
     rt_mutex_init(&host->bus_lock, "sd_bus_lock", RT_IPC_FLAG_PRIO);
     rt_sem_init(&host->sem_ack, "sd_ack", 0, RT_IPC_FLAG_FIFO);
+    rt_sem_init(&host->detect_ack, "sd_det", 0, RT_IPC_FLAG_FIFO);
 
     return host;
 }
@@ -824,6 +845,7 @@ void mmcsd_free_host(struct rt_mmcsd_host *host)
 {
     rt_mutex_detach(&host->bus_lock);
     rt_sem_detach(&host->sem_ack);
+    rt_sem_detach(&host->detect_ack);
     rt_free(host);
 }
 

@@ -1342,8 +1342,13 @@ rt_inline rt_int32_t sdio_match_card(struct rt_mmcsd_card           *card,
         (id->manufacturer != card->cis.manufacturer))
         return 0;
 
+    if (card->sdio_function_num > 7)
+        return 0;
+
     while (num <= card->sdio_function_num)
     {
+        if (card->sdio_function[num] == RT_NULL)
+            break;
         if ((id->product != SDIO_ANY_PROD_ID) &&
             (id->product == card->sdio_function[num]->product))
             return 1;
@@ -1379,6 +1384,7 @@ rt_int32_t sdio_register_driver(struct rt_sdio_driver *driver)
     struct sdio_driver *sd;
     struct rt_mmcsd_card *card;
 
+    rt_kprintf("sdio register: malloc\n");
     sd = rt_malloc(sizeof(struct sdio_driver));
     if (sd == RT_NULL)
     {
@@ -1390,15 +1396,21 @@ rt_int32_t sdio_register_driver(struct rt_sdio_driver *driver)
     sd->drv = driver;
     rt_list_insert_after(&sdio_drivers, &sd->list);
 
-    if (!rt_list_isempty(&sdio_cards))
+    if (rt_list_isempty(&sdio_cards))
     {
-        card = sdio_match_driver(driver->id);
-        if (card != RT_NULL)
-        {
-            return driver->probe(card);
-        }
+        rt_kprintf("sdio register: no card\n");
+        return -RT_EEMPTY;
     }
 
+    rt_kprintf("sdio register: match card\n");
+    card = sdio_match_driver(driver->id);
+    if (card != RT_NULL)
+    {
+        rt_kprintf("sdio register: probe\n");
+        return driver->probe(card);
+    }
+
+    rt_kprintf("sdio register: card id mismatch\n");
     return -RT_EEMPTY;
 }
 

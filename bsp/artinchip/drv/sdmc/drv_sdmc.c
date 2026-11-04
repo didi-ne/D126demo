@@ -430,6 +430,23 @@ static int aic_sdmc_init(struct aic_sdmc *host)
     return 0;
 }
 
+void aic_sdmc_bus_reset(int id)
+{
+    struct aic_sdmc *host;
+
+    if (id < 0 || id >= MAX_MMC_DEV_NUM || !g_aic_sdmc_host[id]) {
+        pr_info("SDMC%d no host to reset\n", id);
+        return;
+    }
+
+    host = g_aic_sdmc_host[id];
+    pr_info("SDMC%d busy=%d before reset\n", id,
+            hal_sdmc_is_busy(&host->host) ? 1 : 0);
+    aic_sdmc_init(host);
+    pr_info("SDMC%d busy=%d after reset\n", id,
+            hal_sdmc_is_busy(&host->host) ? 1 : 0);
+}
+
 static void aic_sdmc_apply_iocfg(struct aic_sdmc *host,
                                  struct rt_mmcsd_io_cfg *io_cfg)
 {
@@ -865,7 +882,15 @@ s32 aic_sdmc_probe(struct aic_sdmc_pdata *pdata)
 
     g_aic_sdmc_host[pdata->id] = host;
 
-    mmcsd_change(rthost);
+    /*
+     * WiFi SDIO shares this controller. Scanning here runs before the WiFi
+     * reset pin is released and leaves mmcsd_detect spinning. The wireless
+     * driver scans after it powers the chip.
+     */
+    if (pdata->is_sdio)
+        pr_info("SDMC%d SDIO scan deferred until WiFi power on\n", pdata->id);
+    else
+        mmcsd_change(rthost);
 
     return 0;
 

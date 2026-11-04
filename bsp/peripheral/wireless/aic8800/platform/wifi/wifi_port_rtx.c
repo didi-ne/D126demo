@@ -15,6 +15,9 @@
 #include "fhost.h"
 #include "cli_al.h"
 #include "wifi_def.h"
+#include "general_wireless_pin.h"
+#include "general_wireless_pm.h"
+#include <drivers/mmcsd_core.h>
 
 #ifdef WIFI_USING_LOOPBACK_NETDEV
 bool loop_dev_reg_flag = 0;
@@ -24,16 +27,37 @@ struct rt_wlan_device * s_ap_dev = NULL;
 rt_err_t aic8800_init(struct rt_wlan_device *wlan)
 {
     int ret = 0;
+    struct rt_mmcsd_host *host;
+
+    rt_kprintf("aic8800_init enter, mode=%d\n", wlan->mode);
     AIC_LOG_PRINTF("%s, mode=%d\n", __func__, wlan->mode);
-    #if 0
-    AIC_LOG_PRINTF("%s ctrl pwrkey\n", __func__);
-    platform_pwr_wifi_pin_init();
-    platform_pwr_wifi_pin_disable();
-    rtos_task_suspend(10);
-    platform_pwr_wifi_pin_enable();
-    #endif
+
+    /* Release WiFi and BT, then scan SDIO. Do this before driver register. */
+    rt_kprintf("aic8800_init power on, sdmc%d internal\n", AIC_WIFI_SDMC_ID);
+    aic_platform_wlan_hw_reset();
+    aic_platform_bt_hw_reset();
+
+    host = aic_sdmc_get_rthost(AIC_WIFI_SDMC_ID);
+    if (!host) {
+        rt_kprintf("aic8800_init no sdmc host\n");
+    } else {
+        aic_sdmc_bus_reset(AIC_WIFI_SDMC_ID);
+        rt_kprintf("aic8800_init sdio scan\n");
+        if (mmcsd_scan_wait(host, rt_tick_from_millisecond(8000)) != RT_EOK)
+        {
+            rt_kprintf("aic8800_init scan timeout card=%p\n", host->card);
+            return -RT_ETIMEOUT;
+        }
+        rt_kprintf("aic8800_init card=%p\n", host->card);
+        if (!host->card)
+        {
+            rt_kprintf("aic8800_init no sdio card\n");
+            return -RT_EEMPTY;
+        }
+    }
 
     ret = wifi_if_sdio_init();
+    rt_kprintf("aic8800_init sdio ret=%d\n", ret);
     return ret;
 }
 

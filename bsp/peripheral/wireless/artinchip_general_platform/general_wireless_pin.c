@@ -25,11 +25,12 @@ int aic_platform_wlan_hw_reset(void)
     g = GPIO_GROUP(pin);
     p = GPIO_GROUP_PIN(pin);
 
-    /* reset */
-    hal_gpio_set_value(g, p, 0);
-    aicos_msleep(10);
-    hal_gpio_set_value(g, p, 1);
-    aicos_msleep(10);
+    /* Drive PE.20. The chip needs time after release before it answers CMD5. */
+    hal_gpio_direction_output(g, p);
+    hal_gpio_clr_output(g, p);
+    aicos_msleep(20);
+    hal_gpio_set_output(g, p);
+    aicos_msleep(200);
 
     return 0;
 }
