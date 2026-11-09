@@ -3,6 +3,7 @@
 #include <string.h>
 #include <rtthread.h>
 #include "wlan_dev.h"
+#include "wlan_mgnt.h"
 #include "aic_plat_log.h"
 #ifdef RT_USING_PM
 #include "general_wireless_pm.h"
@@ -15,26 +16,60 @@
 #include "fhost.h"
 #include "cli_al.h"
 #include "wifi_def.h"
+#include "general_wireless_pin.h"
+#include "general_wireless_pm.h"
+#include <drivers/mmcsd_core.h>
 
 #ifdef WIFI_USING_LOOPBACK_NETDEV
 bool loop_dev_reg_flag = 0;
 #endif
 struct rt_wlan_device * s_wlan_dev = NULL;
 struct rt_wlan_device * s_ap_dev = NULL;
+static int s_wifi_opened;
+static int s_scan_cnt;
+/* 0 makes wlan_sta_cfg append scan_freq 0. A valid channel skips that. */
+extern uint32_t cfg_sta_connect_chan_num;
+/* Empty scan lists are counted as failures. Default 3 aborts in about 6s. */
+extern uint8_t g_user_reconnect_scan_limit;
+
+static void aic8800_wifi_open_once(void)
+{
+    if (s_wifi_opened)
+        return;
+    wlan_if_scan_open();
+    s_wifi_opened = 1;
+}
+void aic_bt_adv_start(void);
 rt_err_t aic8800_init(struct rt_wlan_device *wlan)
 {
-    int ret = 0;
-    AIC_LOG_PRINTF("%s, mode=%d\n", __func__, wlan->mode);
-    #if 0
-    AIC_LOG_PRINTF("%s ctrl pwrkey\n", __func__);
-    platform_pwr_wifi_pin_init();
-    platform_pwr_wifi_pin_disable();
-    rtos_task_suspend(10);
-    platform_pwr_wifi_pin_enable();
-    #endif
+    struct rt_mmcsd_host *host;
+    int ret;
+
+    rt_kprintf("aic8800_init sdmc%d pwr %s bt %s\n",
+               AIC_WIFI_SDMC_ID, AIC_WIRELESS_PWR_GPIO, AIC_WIRELESS_BT_PWR_GPIO);
+    aic_platform_wlan_hw_reset();
+    aic_platform_bt_hw_reset();
+
+    host = aic_sdmc_get_rthost(AIC_WIFI_SDMC_ID);
+    if (!host) {
+        rt_kprintf("aic8800_init no sdmc host\n");
+        return -RT_ERROR;
+    }
+
+    mmcsd_scan_wait(host);
+    rt_kprintf("aic8800_init card=%p\n", host->card);
+    if (!host->card)
+        return -RT_EEMPTY;
 
     ret = wifi_if_sdio_init();
+    rt_kprintf("aic8800_init sdio ret=%d\n", ret);
+    if (!ret)
+        aic_bt_adv_start();
     return ret;
+}
+
+RT_WEAK void aic_bt_adv_start(void)
+{
 }
 
 rt_err_t aic8800_set_mode(struct rt_wlan_device *wlan, rt_wlan_mode_t mode)
@@ -176,22 +211,65 @@ void aic8800_scan_result_callback(struct mac_scan_result *result)
     memcpy((char *)scan_list->bssid, &result->bssid.array[0], RT_WLAN_BSSID_MAX_LENGTH);
     scan_list->ssid.len = result->ssid.length;
     memcpy(scan_list->ssid.val, result->ssid.array, RT_WLAN_SSID_MAX_LENGTH);
+    s_scan_cnt++;
+    rt_kprintf("AP %.*s ch %d rssi %d\n",
+               scan_list->ssid.len, scan_list->ssid.val,
+               scan_list->channel, scan_list->rssi);
     buff.len = sizeof(struct rt_wlan_info);
     buff.data = (void *)scan_list;
     rt_wlan_dev_indicate_event_handle(s_wlan_dev, RT_WLAN_DEV_EVT_SCAN_REPORT, &buff);
 }
 
+static int aic8800_scan_once(int *freqs)
+{
+    struct fhost_cntrl_link *link;
+    struct fhost_vif_status status;
+    struct mac_scan_result result;
+    int ret;
+    int idx;
+
+    link = fhost_cntrl_cfgrwnx_link_open();
+    if (!link) {
+        rt_kprintf("wifi scan link fail\n");
+        return -1;
+    }
+    memset(&status, 0, sizeof(status));
+    if (!fhost_get_vif_status(0, &status))
+        rt_kprintf("wifi scan vif type=%d\n", status.type);
+    if (status.type == VIF_UNKNOWN)
+        fhost_set_vif_type(link, 0, VIF_STA, false);
+    ret = fhost_scan(link, 0, freqs);
+    rt_kprintf("wifi scan fhost=%d\n", ret);
+    for (idx = 0; ret > 0 && idx < ret; idx++) {
+        if (fhost_get_scan_results(link, idx, 1, &result) != 1)
+            break;
+        aic8800_scan_result_callback(&result);
+    }
+    fhost_cntrl_cfgrwnx_link_close(link);
+    return ret;
+}
+
 rt_err_t aic8800_scan(struct rt_wlan_device *wlan, struct rt_scan_info *scan_info)
 {
-    AIC_LOG_PRINTF("%s\n", __func__);
-    if (scan_info){
-        AIC_LOG_PRINTF("scan ssid:%s, len:%d\n", scan_info->ssid.val, scan_info->ssid.len);
-        AIC_LOG_PRINTF("bssid=%02X:%02X:%02X:%02X:%02X:%02X\n",
-            scan_info->bssid[0], scan_info->bssid[1], scan_info->bssid[2],
-            scan_info->bssid[3], scan_info->bssid[4], scan_info->bssid[5]);
-        AIC_LOG_PRINTF("channel:%d->%d, passive=%d\n", scan_info->channel_min, scan_info->channel_max, scan_info->passive);
+    /* A909 was seen on channel 1. Stay there so a short all-channel sweep cannot skip it. */
+    static int s_ch1[] = { 2412, 0 };
+    int i;
+
+    (void)wlan;
+    (void)scan_info;
+    rt_kprintf("wifi scan start\n");
+    aic8800_wifi_open_once();
+    cfg_sta_connect_chan_num = 1;
+    s_scan_cnt = 0;
+    for (i = 0; i < 4 && !s_scan_cnt; i++) {
+        if (aic8800_scan_once(s_ch1) < 0)
+            break;
+        if (!s_scan_cnt)
+            rt_thread_mdelay(200);
     }
-    wlan_if_scan(aic8800_scan_result_callback);
+    if (!s_scan_cnt)
+        aic8800_scan_once(NULL);
+    rt_kprintf("wifi scan results=%d\n", s_scan_cnt);
     rt_wlan_dev_indicate_event_handle(s_wlan_dev, RT_WLAN_DEV_EVT_SCAN_DONE, NULL);
     return 0;
 }
@@ -212,19 +290,41 @@ rt_err_t aic8800_join(struct rt_wlan_device *wlan, struct rt_sta_info *sta_info)
     rt_uint8_t ssid_str[RT_WLAN_SSID_MAX_LENGTH + 1];
     rt_uint8_t pass_str[RT_WLAN_PASSWORD_MAX_LENGTH + 1];
     rt_uint8_t *p_bssid;
-    int to_ms = CONFIG_WIFI_STA_CONN_TIMEOUT_MS;
+    int to_ms = 30000;
     memcpy(ssid_str, sta_info->ssid.val, sta_info->ssid.len);
     ssid_str[sta_info->ssid.len] = '\0';
     memcpy(pass_str, sta_info->key.val, sta_info->key.len);
     pass_str[sta_info->key.len] = '\0';
-    AIC_LOG_PRINTF("%s ssid: %s\n", __func__, ssid_str);
+    rt_kprintf("wifi join ssid:%s\n", ssid_str);
+    aic8800_wifi_open_once();
+    cfg_sta_connect_chan_num = 1;
+    g_user_reconnect_scan_limit = 20;
     fhost_get_mac_status_register(aic8800_mac_status_get_callback);
     p_bssid = &sta_info->bssid[0];
     if (p_bssid[0] || p_bssid[1] || p_bssid[2] || p_bssid[3] || p_bssid[4] || p_bssid[5]) {
         set_sta_connect_bssid((uint8_t *)p_bssid);
     }
     ret = wlan_start_sta(ssid_str, pass_str, WLAN_CONNECT_TO_CFG_2_PARAM(WLAN_CONNECT_CFG_DISABLE_AUTO_RECONN, to_ms));
-    AIC_LOG_PRINTF("wlan_start_sta ret=%d\n", ret);
+    rt_kprintf("wlan_start_sta ret=%d\n", ret);
+    if (ret >= 0) {
+        rt_wlan_config_autoreconnect(RT_TRUE);
+        rt_kprintf("wifi auto reconnect on\n");
+        return RT_EOK;
+    }
+    if (ret == -1)
+        rt_kprintf("wifi join: password too short\n");
+    else if (ret == -2)
+        rt_kprintf("wifi join: interface not ready\n");
+    else if (ret == -4)
+        rt_kprintf("wifi join: timeout\n");
+    else if (ret == -6)
+        rt_kprintf("wifi join: dhcp fail\n");
+    else if (ret == -11)
+        rt_kprintf("wifi join: scan found no AP\n");
+    else if (ret == -12)
+        rt_kprintf("wifi join: wrong password\n");
+    else
+        rt_kprintf("wifi join: connect error\n");
     return ret;
 }
 
