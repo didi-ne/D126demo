@@ -181,7 +181,7 @@ int rwnx_plat_bin_fw_upload_2(struct rwnx_hw *rwnx_hw, u32 fw_addr)
     int err = 0;
     unsigned int i = 0, size;
     u32 *dst;
-    const int BLOCK_SIZE = 1024;//480;//512;//
+    const int BLOCK_SIZE = 128;
 
     /* Copy the file on the Embedded side */
     AIC_LOG_PRINTF("\n### Upload firmware, @ = %x\n", fw_addr);

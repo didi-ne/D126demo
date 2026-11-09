@@ -766,6 +766,8 @@ int aicwf_sdio_send_msg(u8 *buf, uint count)
         ret = sdio_writesb(sdio_function[FUNC_2], sdiodev->sdio_reg.wr_fifo_addr, buf, count);
         sdio_release_host(sdio_function[FUNC_2]);
     }
+    if (ret)
+        rt_kprintf("sdio writesb f%d len %u ret %d\n", func_flag_tx ? 2 : 1, count, ret);
     return ret;
 }
 

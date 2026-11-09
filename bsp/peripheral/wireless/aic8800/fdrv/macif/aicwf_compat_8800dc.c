@@ -1499,8 +1499,7 @@ int system_config_8800dc(struct rwnx_hw *rwnx_hw)
         return ret;
     }
     chip_sub_id = (u8)(rd_mem_addr_cfm.memdata);
-    //AIC_LOG_PRINTF("%x=%x\n", rd_mem_addr_cfm.memaddr, rd_mem_addr_cfm.memdata);
-    AIC_LOG_PRINTF("chip_id=%x, chip_sub_id=%x\n", chip_id, chip_sub_id);
+    rt_kprintf("chip_id=%x, chip_sub_id=%x\n", chip_id, chip_sub_id);
     if (IS_CHIP_ID_H()) {
         AIC_LOG_PRINTF("is 8800dcdw_h chip");
     }

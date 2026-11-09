@@ -75,15 +75,20 @@ static int cmd_mgr_queue(struct rwnx_cmd_mgr *cmd_mgr, struct rwnx_cmd *cmd)
         int ret;
         rtos_mutex_unlock(cmd_mgr->mutex);
         ret = rtos_semaphore_wait(cmd->sema, 5000);
-        if (ret < 0) {
-            aic_dbg("cmd_mgr sema wait err\n");
-            list_del(&cmd->list);
-            cmd_mgr->queue_sz--;
-        } else if (ret == 1) {
-            aic_dbg("cmd_mgr sema wait timeout\n");
-            list_del(&cmd->list);
-            cmd_mgr->queue_sz--;
+        rtos_mutex_lock(cmd_mgr->mutex, -1);
+        if (ret < 0 || ret == 1) {
+            if (ret < 0) {
+                rt_kprintf("cmd_mgr sema wait err id=%x\n", cmd->id);
+            } else {
+                rt_kprintf("cmd_mgr sema wait timeout id=%x\n", cmd->id);
+            }
+            if (!(cmd->flags & RWNX_CMD_FLAG_DONE)) {
+                list_del(&cmd->list);
+                if (cmd_mgr->queue_sz > 0)
+                    cmd_mgr->queue_sz--;
+            }
         }
+        rtos_mutex_unlock(cmd_mgr->mutex);
         rtos_semaphore_delete(cmd->sema);
     } else {
         cmd->result = 0;

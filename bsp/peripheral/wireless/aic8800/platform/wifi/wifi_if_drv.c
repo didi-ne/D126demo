@@ -89,6 +89,7 @@ struct rt_sdio_driver wifi_if_sdio_drv = {
 int wifi_if_sdio_init(void)
 {
     int chip_id = CONFIG_CHIPID_SELECT;
+    rt_kprintf("wifi_if_sdio_init chip=%d\n", chip_id);
     if (0) {}
     #if defined(CONFIG_AIC8800D80_SUPPORT)
     else if (chip_id == PRODUCT_ID_AIC8800D80) {

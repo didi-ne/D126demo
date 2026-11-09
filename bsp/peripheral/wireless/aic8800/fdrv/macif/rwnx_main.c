@@ -868,7 +868,15 @@ static int start_from_bootrom_8800dc(struct rwnx_hw *rwnx_hw)
 
 #ifdef CONFIG_BT_SUPPORT
 extern int aicbt_init(struct rwnx_hw *rwnx_hw);
+extern void aicbt_notify_host_ready(void);
 #endif
+
+static volatile int s_fwload_busy;
+
+void aic8800_fwload_set(int busy)
+{
+    s_fwload_busy = busy ? 1 : 0;
+}
 
 int rwnx_fdrv_init(struct rwnx_hw *rwnx_hw)
 {
@@ -881,6 +889,7 @@ int rwnx_fdrv_init(struct rwnx_hw *rwnx_hw)
     struct mac_addr base_mac_addr;
 
     AIC_LOG_PRINTF("rwnx_fdrv_init enter\n");
+    s_fwload_busy = 1;
 
     ret = rwnx_apm_staloss_init(rwnx_hw);
     if (ret) {
@@ -1046,14 +1055,26 @@ int rwnx_fdrv_init(struct rwnx_hw *rwnx_hw)
     #endif
 
     AIC_LOG_PRINTF("rwnx_fdrv_init exit\n");
+#ifdef CONFIG_BT_SUPPORT
+    aicbt_notify_host_ready();
+#endif
+    s_fwload_busy = 0;
     return ret;
 
 err_lmac_reqs:
     AIC_LOG_PRINTF("err_lmac_reqs\n");
+#ifdef CONFIG_BT_SUPPORT
+    aicbt_notify_host_ready();
+#endif
+    s_fwload_busy = 0;
     return ret;
 
 err_platon:
     AIC_LOG_PRINTF("err_platon\n");
+#ifdef CONFIG_BT_SUPPORT
+    aicbt_notify_host_ready();
+#endif
+    s_fwload_busy = 0;
     return ret;
 }
 

@@ -12,6 +12,7 @@ include_path +=[cwd + '/macif']
 include_path +=[cwd + '/aicbt_bsp']
 include_path +=[cwd + '/layer_abstract/inc']
 include_path +=[cwd + '/layer_common/inc']
+include_path +=[cwd + '/../../artinchip_general_platform']
 
 src += Glob('fw/*.c')
 src += Glob('macif/*.c')

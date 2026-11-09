@@ -376,8 +376,7 @@ int bt_uart_init(void)
 #else
     config.baud_rate = BAUD_RATE_1500000;
     config.parity    = PARITY_NONE;
-    config.flowcontrol = RT_SERIAL_FLOWCONTROL_CTSRTS;
-    config.function = RT_SERIAL_RS232_AUTO_FLOW_CTRL;
+    config.flowcontrol = RT_SERIAL_FLOWCONTROL_NONE;
 #endif
 
     if (rt_device_control(uart, RT_DEVICE_CTRL_CONFIG, &config)) {

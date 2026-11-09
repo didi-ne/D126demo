@@ -5,6 +5,7 @@
 #include "rtos_port.h"
 #include <string.h>
 #include "sys_al.h"
+#include "general_wireless_pin.h"
 
 u8 is_chip_id_h = 0;
 
@@ -36,13 +37,13 @@ int rwnx_plat_bin_fw_upload_android(struct rwnx_hw *rwnx_hw, uint32_t fw_addr,
 		return -1;
 	}
 
-	/* Copy the file on the Embedded side */
-	if (size > 1024) { // > 1KB data
-		for (i = 0; i < (size - 1024); i += 1024) { // each time write 1KB
-			//aic_dbg("wr blk 0: %p -> %x\r\n", dst + i / 4, fw_addr + i);
-			err = rwnx_send_dbg_mem_block_write_req(rwnx_hw, fw_addr + i, 1024, dst + i / 4);
+	/* One SDIO block. A 1024-byte write becomes a 3-block CMD53 and
+	 * this controller never returns DBG_MEM_BLOCK_WRITE_CFM. */
+	if (size > 128) {
+		for (i = 0; i < (size - 128); i += 128) {
+			err = rwnx_send_dbg_mem_block_write_req(rwnx_hw, fw_addr + i, 128, dst + i / 4);
 			if (err) {
-				aic_dbg("bin upload fail: %x, err:%d\r\n", fw_addr + i, err);
+				rt_kprintf("bin upload fail: %x, err:%d\n", fw_addr + i, err);
 				break;
 			}
 		}
@@ -52,7 +53,7 @@ int rwnx_plat_bin_fw_upload_android(struct rwnx_hw *rwnx_hw, uint32_t fw_addr,
 		//aic_dbg("wr blk 1: %p -> %x\r\n", dst + i / 4, fw_addr + i);
 		err = rwnx_send_dbg_mem_block_write_req(rwnx_hw, fw_addr + i, size - i, dst + i / 4);
 		if (err) {
-			aic_dbg("bin upload fail: %x, err:%d\r\n", fw_addr + i, err);
+			rt_kprintf("bin upload fail: %x, err:%d\n", fw_addr + i, err);
 		}
 	}
 
@@ -250,15 +251,14 @@ int aicbt_patch_trap_data_load(struct rwnx_hw *rwnx_hw, struct aicbt_patch_table
 		patch_info.addr_patch = FW_RAM_PATCH_BASE_ADDR;
 		adid_name = FW_ADID;
 		patch_name = FW_PATCH;
-	} else if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC) {
+	} else if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+		   rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) {
 		adid_name = FW_ADID_8800DC_U02;
 		patch_name = FW_PATCH_8800DC_U02;
 		ext_name = FW_PATCH_8800DC_U02_EXT;
 		aicbt_patch_info_unpack(&patch_info, head);
-		if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC) {
-			ret = rwnx_send_dbg_mem_write_req(rwnx_hw, 0x40506004, 0x04318000);
-			ret = rwnx_send_dbg_mem_write_req(rwnx_hw, 0x40506004, 0x04338000);
-		}
+		ret = rwnx_send_dbg_mem_write_req(rwnx_hw, 0x40506004, 0x04318000);
+		ret = rwnx_send_dbg_mem_write_req(rwnx_hw, 0x40506004, 0x04338000);
 	} else {
 		adid_name = FW_ADID_8800D80_U02;
 		patch_name = FW_PATCH_8800D80_U02;
@@ -321,19 +321,25 @@ int aicbt_patch_table_load(struct rwnx_hw *rwnx_hw, struct aicbt_patch_table *he
 		if (AICBT_PT_BTMODE == p->type) {
 			*(data + 1)  = aicbsp_info.hwinfo < 0;
 			*(data + 3)  = aicbsp_info.hwinfo;
-			*(data + 5)  = (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ? aicbsp_info.cpmode : 0);
+			*(data + 5)  = ((rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+					rwnx_hw->chipid == PRODUCT_ID_AIC8800DW)
+					? aicbsp_info.cpmode : 0);
 
-			if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC) {
-				*(data + 7)  = aicbt_info_8800dc.btmode;
+			if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC ||
+			    rwnx_hw->chipid == PRODUCT_ID_AIC8800DW) {
+				/* D126 on-chip UART, no external RTS/CTS.
+				 * COMBO keeps SDIO up. BT_ONLY turns SDIO off at PWRON.
+				 * 1.5 Mbps, flow control off. */
+				*(data + 7)  = AICBT_BTMODE_BT_WIFI_COMBO;
 				*(data + 9)  = aicbt_info_8800dc.btport;
-				*(data + 11) = aicbt_info_8800dc.uart_baud;
-				*(data + 13) = aicbt_info_8800dc.uart_flowctrl;
+				*(data + 11) = AICBT_UART_BAUD_1_5M;
+				*(data + 13) = AICBT_UART_FLOWCTRL_DISABLE;
 				*(data + 15) = aicbt_info_8800dc.lpm_enable;
 				*(data + 17) = aicbt_info_8800dc.txpwr_lvl;
 
-				aic_dbg("%s bt btmode[%d]:%d \r\n", __func__, rwnx_hw->chipid, aicbt_info_8800dc.btmode);
-				aic_dbg("%s bt uart_baud[%d]:%d \r\n", __func__, rwnx_hw->chipid, aicbt_info_8800dc.uart_baud);
-				aic_dbg("%s bt uart_flowctrl[%d]:%d \r\n", __func__, rwnx_hw->chipid, aicbt_info_8800dc.uart_flowctrl);
+				aic_dbg("%s bt btmode[%d]:%d \r\n", __func__, rwnx_hw->chipid, AICBT_BTMODE_BT_WIFI_COMBO);
+				aic_dbg("%s bt uart_baud[%d]:%d \r\n", __func__, rwnx_hw->chipid, AICBT_UART_BAUD_1_5M);
+				aic_dbg("%s bt uart_flowctrl[%d]:%d \r\n", __func__, rwnx_hw->chipid, AICBT_UART_FLOWCTRL_DISABLE);
 				aic_dbg("%s bt lpm_enable[%d]:%d \r\n", __func__, rwnx_hw->chipid, aicbt_info_8800dc.lpm_enable);
 				aic_dbg("%s bt tx_pwr[%d]:%d \r\n", __func__, rwnx_hw->chipid, aicbt_info_8800dc.txpwr_lvl);
 			} else {
@@ -359,12 +365,18 @@ int aicbt_patch_table_load(struct rwnx_hw *rwnx_hw, struct aicbt_patch_table *he
 
 		for (i = 0; i < p->len; i++) {
 			ret = rwnx_send_dbg_mem_write_req(rwnx_hw, *data, *(data + 1));
-			if (ret != 0)
+			if (ret != 0) {
+				aic_dbg("%s write fail type %d [%d] %08x=%08x ret %d\n",
+					__func__, p->type, i, *data, *(data + 1), ret);
 				return ret;
+			}
 			data += 2;
 		}
-		if (p->type == AICBT_PT_PWRON)
-			rtos_udelay(500);
+		if (p->type == AICBT_PT_PWRON) {
+			/* Next entry is the AF patch. A long wait lets the BT core
+			 * run and then SDIO debug writes time out. */
+			rtos_msleep(1);
+		}
 	}
 
 	//aicbt_patch_table_free(&head);
@@ -422,12 +434,34 @@ int aicbt_patch_table_load(struct rwnx_hw *rwnx_hw, struct aicbt_patch_table *he
 	return 0;
 }
 #endif
+/* 0 = not ready, 1 = HCI may start, -1 = failed. */
+static volatile int s_aicbt_ready;
+static volatile int s_aicbt_patch_ok;
+
+int aicbt_is_ready(void)
+{
+	return s_aicbt_ready;
+}
+
+void aicbt_notify_host_ready(void)
+{
+	if (s_aicbt_patch_ok == 1 && s_aicbt_ready == 0) {
+		aic_platform_bt_power_on();
+		rtos_msleep(500);
+		s_aicbt_ready = 1;
+		aic_dbg("aicbt host ready\n");
+	}
+}
+
 int aicbt_init(struct rwnx_hw *rwnx_hw)
 {
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 	int ret = 0;
 	struct aicbt_patch_table *head = NULL;
 	enum aic_fw table_name = FW_UNKNOWN;
+
+	s_aicbt_ready = 0;
+	s_aicbt_patch_ok = 0;
 
 	if (rwnx_hw->chipid == PRODUCT_ID_AIC8800DC || rwnx_hw->chipid == PRODUCT_ID_AIC8800DW)
 		table_name = FW_PATCH_TABLE_8800DC_U02;
@@ -439,6 +473,7 @@ int aicbt_init(struct rwnx_hw *rwnx_hw)
 
 	if (head == NULL) {
 		aic_dbg("aicbt_patch_table_alloc fail\n");
+		s_aicbt_ready = -1;
 		return -1;
 	}
 
@@ -456,5 +491,12 @@ int aicbt_init(struct rwnx_hw *rwnx_hw)
 
 err:
 	aicbt_patch_table_free(&head);
+	if (ret == 0) {
+		s_aicbt_patch_ok = 1;
+		aic_dbg("aicbt_init patch ok, wait fdrv\n");
+	} else {
+		s_aicbt_ready = -1;
+		aic_dbg("aicbt_init done ready=%d\n", s_aicbt_ready);
+	}
 	return ret;
 }
