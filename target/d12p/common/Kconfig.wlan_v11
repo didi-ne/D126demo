@@ -14,21 +14,21 @@ if AIC_WIRELESS_LAN
 
     config AIC_WIRELESS_PWR_GPIO
         string
-        default "PE.20"
+        default "PE.18"
 
     config AIC_WIRELESS_BT_PWR_GPIO
         string
-        default "PE.18"
+        default "PE.20"
 
     config AIC_WIRELESS_WIFI_WK_HOST_GPIO
         string
-        default "PE.19"
+        default "PA.6"
 
     config AIC_WIFI_SDMC_ID
         int
         default 1
 
-    config CHIP_SELECT_AIC8800DL
+    config CHIP_SELECT_AIC8800DW
         bool
         default y
 

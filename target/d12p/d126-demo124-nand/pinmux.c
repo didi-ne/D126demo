@@ -110,12 +110,13 @@ struct aic_pinmux aic_pinmux_config[] = {
     {2, PIN_PULL_UP, 7, "PB.11"},
 #endif
 #ifdef AIC_USING_SDMC1
-    /* {2, PIN_PULL_UP, 7, "PC.0"}, */
-    /* {2, PIN_PULL_UP, 7, "PC.1"}, */
-    /* {2, PIN_PULL_UP, 7, "PC.2"}, */
-    /* {2, PIN_PULL_UP, 7, "PC.3"}, */
-    /* {2, PIN_PULL_UP, 7, "PC.4"}, */
-    /* {2, PIN_PULL_UP, 7, "PC.5"}, */
+    /* On-chip AIC8800 SDIO, function 8. Not the TF socket (SDMC0 / PB.6-PB.11). */
+    {8, PIN_PULL_UP, 7, "PE.12"},
+    {8, PIN_PULL_UP, 7, "PE.13"},
+    {8, PIN_PULL_UP, 7, "PE.14"},
+    {8, PIN_PULL_UP, 7, "PE.15"},
+    {8, PIN_PULL_UP, 7, "PE.16"},
+    {8, PIN_PULL_UP, 7, "PE.17"},
 #endif
 #ifdef AIC_USING_QSPI2
 #ifdef AIC_LVGL_FIVE_DISP_DEMO
