@@ -700,96 +700,109 @@ void mmcsd_change(struct rt_mmcsd_host *host)
     rt_mb_send(&mmcsd_detect_mb, (rt_ubase_t)host);
 }
 
+static void mmcsd_scan_host(struct rt_mmcsd_host *host)
+{
+    rt_uint32_t ocr;
+    rt_int32_t err;
+
+    if (host->card == RT_NULL)
+    {
+        mmcsd_host_lock(host);
+        mmcsd_power_up(host);
+        mmcsd_go_idle(host);
+
+        mmcsd_send_if_cond(host, host->valid_ocr);
+
+        err = sdio_io_send_op_cond(host, 0, &ocr);
+        rt_kprintf("sdio detect op_cond err=%d ocr=0x%x\n", err, ocr);
+        if (!err)
+        {
+            if (init_sdio(host, ocr))
+                mmcsd_power_off(host);
+            mmcsd_host_unlock(host);
+            return;
+        }
+
+        /*
+         * detect SD card
+         */
+        err = mmcsd_send_app_op_cond(host, 0, &ocr);
+        if (!err)
+        {
+            if (init_sd(host, ocr))
+                mmcsd_power_off(host);
+            mmcsd_host_unlock(host);
+#ifdef AIC_SDMC_DRV
+            if (host->sd_hotplug == 0)
+                rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
+#else
+            rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
+#endif
+            return;
+        }
+
+        /*
+         * detect mmc card
+         */
+        err = mmc_send_op_cond(host, 0, &ocr);
+        if (!err)
+        {
+            if (init_mmc(host, ocr))
+                mmcsd_power_off(host);
+            mmcsd_host_unlock(host);
+#ifdef AIC_SDMC_DRV
+            if (host->sd_hotplug == 0)
+                rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
+#else
+            rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
+#endif
+            return;
+        }
+        mmcsd_host_unlock(host);
+        rt_kprintf("sdio detect no card\n");
+    }
+    else
+    {
+        /* card removed */
+        mmcsd_host_lock(host);
+        if (host->card->sdio_function_num != 0)
+        {
+            LOG_W("unsupport sdio card plug out!");
+        }
+        else
+        {
+            rt_mmcsd_blk_remove(host->card);
+            rt_free(host->card);
+
+            host->card = RT_NULL;
+        }
+        mmcsd_host_unlock(host);
+#ifdef AIC_SDMC_DRV
+        if (host->sd_hotplug == 0)
+            rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
+        else
+            mmcsd_power_off(host);
+#else
+        rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
+#endif
+    }
+}
+
+rt_err_t mmcsd_scan_wait(struct rt_mmcsd_host *host)
+{
+    /* Detect thread is lower priority than the shell and LVGL, so scan here. */
+    mmcsd_scan_host(host);
+    return host->card ? RT_EOK : -RT_EEMPTY;
+}
+
 void mmcsd_detect(void *param)
 {
     struct rt_mmcsd_host *host;
-    rt_uint32_t  ocr;
-    rt_int32_t  err;
 
     while (1)
     {
         if (rt_mb_recv(&mmcsd_detect_mb, (rt_ubase_t *)&host, RT_WAITING_FOREVER) == RT_EOK)
-        {
-            if (host->card == RT_NULL)
-            {
-                mmcsd_host_lock(host);
-                mmcsd_power_up(host);
-                mmcsd_go_idle(host);
-
-                mmcsd_send_if_cond(host, host->valid_ocr);
-
-                err = sdio_io_send_op_cond(host, 0, &ocr);
-                if (!err)
-                {
-                    if (init_sdio(host, ocr))
-                        mmcsd_power_off(host);
-                    mmcsd_host_unlock(host);
-                    continue;
-                }
-
-                /*
-                 * detect SD card
-                 */
-                err = mmcsd_send_app_op_cond(host, 0, &ocr);
-                if (!err)
-                {
-                    if (init_sd(host, ocr))
-                        mmcsd_power_off(host);
-                    mmcsd_host_unlock(host);
-#ifdef AIC_SDMC_DRV
-                    if (host->sd_hotplug == 0)
-                        rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
-#else
-                    rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
-#endif
-                    continue;
-                }
-
-                /*
-                 * detect mmc card
-                 */
-                err = mmc_send_op_cond(host, 0, &ocr);
-                if (!err)
-                {
-                    if (init_mmc(host, ocr))
-                        mmcsd_power_off(host);
-                    mmcsd_host_unlock(host);
-#ifdef AIC_SDMC_DRV
-                    if (host->sd_hotplug == 0)
-                        rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
-#else
-                    rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
-#endif
-                    continue;
-                }
-                mmcsd_host_unlock(host);
-            }
-            else
-            {
-                /* card removed */
-                mmcsd_host_lock(host);
-                if (host->card->sdio_function_num != 0)
-                {
-                    LOG_W("unsupport sdio card plug out!");
-                }
-                else
-                {
-                    rt_mmcsd_blk_remove(host->card);
-                    rt_free(host->card);
-
-                    host->card = RT_NULL;
-                }
-                mmcsd_host_unlock(host);
-#ifdef AIC_SDMC_DRV
-                if (host->sd_hotplug == 0)
-                    rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
-                else
-                    mmcsd_power_off(host);
-#else
-                rt_mb_send(&mmcsd_hotpluge_mb, (rt_ubase_t)host);
-#endif
-            }
-        }
+            mmcsd_scan_host(host);
     }
 }
 

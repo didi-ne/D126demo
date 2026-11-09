@@ -207,6 +207,11 @@ static void aic_sdmc_request(struct rt_mmcsd_host *rthost,
     if (cmd->cmd_code != STOP_TRANSMISSION) {
         while (hal_sdmc_is_busy(&host->host)) {
             if (rt_tick_get_millisecond() - start > timeout) {
+                if (host->host.is_sdio) {
+                    pr_warn("SDMC%d SDIO busy, send cmd %d anyway\n",
+                            host->index, cmd->cmd_code);
+                    break;
+                }
                 pr_warn("Data transfer is busy\n");
                 cmd->err = -RT_EBUSY;
                 goto out;
@@ -865,7 +870,11 @@ s32 aic_sdmc_probe(struct aic_sdmc_pdata *pdata)
 
     g_aic_sdmc_host[pdata->id] = host;
 
-    mmcsd_change(rthost);
+    if (pdata->is_sdio) {
+        rt_kprintf("SDMC%d SDIO scan deferred\n", pdata->id);
+    } else {
+        mmcsd_change(rthost);
+    }
 
     return 0;
 
