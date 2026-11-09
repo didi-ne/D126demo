@@ -1,0 +1,32 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+import os
+
+group = []
+src = []
+
+if GetDepend(['AIC_BLE_IMG_PUSH']):
+    cwd = GetCurrentDir()
+    zephyr = os.path.join(AIC_ROOT, 'packages', 'third-party', 'zephyr-bluetooth')
+    CPPPATH = [
+        cwd,
+        os.path.join(zephyr, 'include'),
+        os.path.join(zephyr, 'porting'),
+    ]
+    if GetDepend(['LPKG_USING_LVGL']):
+        lvgl = os.path.join(AIC_ROOT, 'packages', 'artinchip', 'lvgl-ui')
+        lvgl9 = os.path.join(lvgl, 'lvgl_v9')
+        CPPPATH += [
+            lvgl,
+            lvgl9,
+            os.path.join(lvgl9, 'lvgl'),
+            os.path.join(lvgl9, 'lv_drivers'),
+            os.path.join(lvgl9, 'lv_drivers', 'lv_mpp_dec'),
+            os.path.join(lvgl9, 'lvgl', 'src', 'libs', 'tjpgd'),
+        ]
+    src = Glob('*.c')
+    CFLAGS = ' -include zephyr/autoconf.h'
+    group = DefineGroup('ble-img', src, depend = [''], CPPPATH = CPPPATH, CFLAGS = CFLAGS)
+
+Return('group')

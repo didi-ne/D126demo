@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include <zephyr/kernel_includes.h>
+#include <zephyr/fatal_types.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>

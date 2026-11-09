@@ -14,5 +14,6 @@ source "packages/artinchip/uds/Kconfig"
 source "packages/artinchip/zipfs/Kconfig"
 source "packages/artinchip/thread_stack_trace/Kconfig"
 source "packages/artinchip/aic-profiler/Kconfig"
+source "packages/artinchip/ble-img/Kconfig"
 
 endmenu

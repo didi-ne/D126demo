@@ -1,0 +1,11 @@
+config AIC_BLE_IMG_PUSH
+    bool "BLE image push GATT server (FF00)"
+    default n
+    depends on LPKG_USING_ZEPHYR_BLUETOOTH
+    depends on AIC_WIRELESS_LAN
+    select AIC_USING_UART3
+    select LPKG_BT_PERIPHERAL
+    select CONFIG_AIC8800_BT_SUPPORT
+    help
+        D126 BLE image push. Advertises AYYDDFQ, GATT service FF00
+        (CTRL FF01 / DATA FF02 / STATUS FF03). HCI uses on-chip UART3.
