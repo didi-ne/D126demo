@@ -1,27 +1,19 @@
 {
     "spi-nand": { // Device, The name should be the same with string in image:info:media:type
-        "size": "128m", // Size of SPI NAND. Change this if the chip capacity differs.
+        "size": "128m", // Winbond 1Gb = 128MB, W25N01GV: 2048+64@64@1024
         "partitions": {
             "spl":        { "size": "1m" },
             "userid":     { "size": "256k" }, // at least 16KB
             "env":        { "size": "256k" },
             "env_r":      { "size": "256k" },
-            "os":         { "size": "4m" },
-            "os_r":       { "size": "4m" },
-            "rodata":     { "size": "14m" },
-            "rodata_r":   { "size": "14m" },
+            "os":         { "size": "8m" },
+            "rodata":     { "size": "102m" },
             "data": {
-                "size": "40m",
-                "nftl": { // Volume in NFTL device
-                    "data": { "size": "-" },
-                },
-            },
-            "data_r": {
-                "size": "40m",
-                "nftl": { // Volume in NFTL device
-                    "data": { "size": "-" },
-                },
-            },
+                "size": "16m",
+                "nftl": {
+                    "data": { "size": "-" }
+                }
+            }
         },
     },
     "image": {
@@ -32,8 +24,9 @@
             "media": {
                 "type": "spi-nand",
                 "device_id": 0,
+                "planes": 1,
                 "array_organization": [
-                    { "page": "2k", "block": "128k" },
+                    { "page": "2k", "block": "128k", "oob": "64" }
                 ],
             },
         },

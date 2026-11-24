@@ -1,0 +1,109 @@
+HW_Reset();                
+
+Delay(120);                //Delay 120ms 
+
+Write(Command , 0x11);     //Sleep out
+
+Delay(120);                //Delay 120ms
+
+Write(Command , 0xB1);     //Normal mode
+Write(Parameter , 0x05);   
+Write(Parameter , 0x3C);   
+Write(Parameter , 0x3C);   
+
+Write(Command , 0xB2);     //Idle mode
+Write(Parameter , 0x05);   
+Write(Parameter , 0x3C);   
+Write(Parameter , 0x3C);   
+
+Write(Command , 0xB3);     //Partial mode
+Write(Parameter , 0x05);   
+Write(Parameter , 0x3C);   
+Write(Parameter , 0x3C);   
+Write(Parameter , 0x05);   
+Write(Parameter , 0x3C);   
+Write(Parameter , 0x3C);   
+
+Write(Command , 0xB4);     //Dot inversion
+Write(Parameter , 0x03);   
+
+Write(Command , 0xC0);     //AVDD GVDD
+Write(Parameter , 0xA8);   
+Write(Parameter , 0x08);   
+Write(Parameter , 0x84);   
+
+Write(Command , 0xC1);     //VGH VGL
+Write(Parameter , 0x04);   
+
+Write(Command , 0xC2);     //Normal Mode
+Write(Parameter , 0x0D);   
+Write(Parameter , 0x00);   
+
+Write(Command , 0xC3);     //Idle
+Write(Parameter , 0x8D);   
+Write(Parameter , 0x6A);   
+
+Write(Command , 0xC4);     //Partial+Full
+Write(Parameter , 0x8D);   
+Write(Parameter , 0xEE);   
+
+Write(Command , 0xC5);     //VCOM
+Write(Parameter , 0x2F);   
+
+Write(Command , 0xE0);     
+Write(Parameter ,0x17);
+Write(Parameter ,0x1B);
+Write(Parameter ,0x03);
+Write(Parameter ,0x00);
+Write(Parameter ,0x0D);
+Write(Parameter ,0x05);
+Write(Parameter ,0x05);
+Write(Parameter ,0x0A);
+Write(Parameter ,0x10);
+Write(Parameter ,0x1A);
+Write(Parameter ,0x34);
+Write(Parameter ,0x36);
+Write(Parameter ,0x10);
+Write(Parameter ,0x17);
+Write(Parameter ,0x00);
+Write(Parameter ,0x00);
+
+Write(Command , 0xE1);     
+Write(Parameter ,0x18);
+Write(Parameter ,0x1D);
+Write(Parameter ,0x01);
+Write(Parameter ,0x00);
+Write(Parameter ,0x0A);
+Write(Parameter ,0x03);
+Write(Parameter ,0x03);
+Write(Parameter ,0x0C);
+Write(Parameter ,0x12);
+Write(Parameter ,0x1E);
+Write(Parameter ,0x30);
+Write(Parameter ,0x3A);
+Write(Parameter ,0x10);
+Write(Parameter ,0x10);
+Write(Parameter ,0x00);
+Write(Parameter ,0x00); 
+
+Write(Command , 0x3A);     
+Write(Parameter , 0x05);   //06
+
+Write(Command , 0x36);     //BGR
+Write(Parameter , 0xC8);   
+
+Write(Command , 0x29);     //Display on
+
+Write(Command , 0x2A);     //Set Column Address
+Write(Parameter , 0x00);   
+Write(Parameter , 0x1A);   //26  
+Write(Parameter , 0x00);   
+Write(Parameter , 0x69);   //105 
+
+Write(Command , 0x2B);     //Set Page Address
+Write(Parameter , 0x00);   
+Write(Parameter , 0x01);   //1
+Write(Parameter , 0x00);   
+Write(Parameter , 0xA0);   //160
+
+Write(Command , 0x2C);     

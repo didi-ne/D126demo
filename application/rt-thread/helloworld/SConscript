@@ -3,7 +3,7 @@ Import('rtconfig')
 from building import *
 
 cwd     = GetCurrentDir()
-src     = Glob('main.c')
+src     = Glob('main.c') + Glob('key_adc.c')
 CPPPATH = [cwd, ]
 
 CFLAGS = ' -c -ffunction-sections'

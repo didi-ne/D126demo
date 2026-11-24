@@ -1,0 +1,39 @@
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "BLE调试助手"
+			}
+		},
+		{
+			"path": "pages/push/push",
+			"style": {
+				"navigationBarTitleText": "蓝牙服务",
+				"app-plus": {
+					"titleNView": {
+						"autoBackButton": false
+					}
+				}
+			}
+		},
+		{
+			"path": "pages/send/send",
+			"style": {
+				"navigationBarTitleText": "发送图片",
+				"app-plus": {
+					"titleNView": {
+						"autoBackButton": false
+					}
+				}
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "BLE调试助手",
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F2F3F5"
+	},
+	"uniIdRouter": {}
+}
