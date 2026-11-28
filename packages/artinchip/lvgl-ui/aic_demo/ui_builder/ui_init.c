@@ -107,7 +107,7 @@ void ui_init(void)
     if (spi_disp) {
         lv_disp_set_default(spi_disp);
 #ifdef LV_SPI_ST7735S
-        /* 1.06" ST7735S：点屏演示，不加载字体/轮播 */
+        /* 0.42" ST7735P3：点屏演示，不加载字体/轮播 */
         screen_1_create(&ui_manager);
         lv_scr_load(screen_1_get(&ui_manager)->obj);
 #else

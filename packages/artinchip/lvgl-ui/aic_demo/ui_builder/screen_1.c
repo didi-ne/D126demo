@@ -1,14 +1,14 @@
 /*
  * Copyright (C) 2026 ArtInChip Technology Co., Ltd.
  *
- * TFT106B001 1.06" ST7735S：96x160 四张猫图循环，每张 5 秒。
+ * TFT042B008 0.42" ST7735P3：96x54，仓鼠 / 六角恐龙 / 猫，每张 5 秒。
  */
 
 #include "ui_objects.h"
 #include "aic_ui.h"
 #include "ui_util.h"
 #ifdef LV_SPI_ST7735S
-#include "cat_img.h"
+#include "slide_img.h"
 #include "lv_aic_spi.h"
 #endif
 
@@ -28,10 +28,9 @@ static void screen_1_loaded(lv_event_t *e)
 #define CAT_SLIDE_MS 5000
 
 static const lv_image_dsc_t * const s_cat_imgs[] = {
-    &cat_img,
-    &cat_img1,
-    &cat_img2,
-    &cat_img3,
+    &img_hamster,
+    &img_axolotl,
+    &img_cat,
 };
 
 static lv_obj_t *s_cat_img_obj;
@@ -78,18 +77,18 @@ void screen_1_create(ui_manager_t *ui)
     lv_obj_add_event_cb(scr->obj, screen_1_loaded, LV_EVENT_SCREEN_LOADED, NULL);
 
 #ifdef LV_SPI_ST7735S
-    /* 小屏原生 96x160：不要走 ui_fit_to_panel（那是 360 圆屏缩放，会裁掉半屏） */
+    /* 小屏原生 96x54：不要走 ui_fit_to_panel（那是 360 圆屏缩放） */
     lv_obj_remove_style_all(scr->obj);
     lv_obj_set_style_bg_color(scr->obj, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(scr->obj, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_all(scr->obj, 0, LV_PART_MAIN);
-    lv_obj_set_size(scr->obj, 96, 160);
+    lv_obj_set_size(scr->obj, 96, 54);
 
     scr->animImg_1 = lv_img_create(scr->obj);
     lv_obj_remove_style_all(scr->animImg_1);
-    lv_img_set_src(scr->animImg_1, &cat_img);
+    lv_img_set_src(scr->animImg_1, &img_hamster);
     lv_obj_set_pos(scr->animImg_1, 0, 0);
-    lv_obj_set_size(scr->animImg_1, 96, 160);
+    lv_obj_set_size(scr->animImg_1, 96, 54);
     lv_image_set_inner_align(scr->animImg_1, LV_IMAGE_ALIGN_DEFAULT);
 
     s_cat_img_obj = scr->animImg_1;
